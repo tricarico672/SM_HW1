@@ -207,6 +207,7 @@ predob <- ROCR::prediction(lr_prob, test_data$CHD)
 
 perf <- ROCR::performance(predob, "tpr", "fpr")
 
+par(mfrow = c(1,1))
 plot(perf, main = 'ROC Curve')
 abline(0, 1, col = "red", lty = 2)
 

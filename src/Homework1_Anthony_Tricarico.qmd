@@ -34,7 +34,7 @@ df <- read_csv("data/CHD_Data.csv")
 
 # Introduction
 
-This report will present the results from a statistical analysis whose primary goal is to find the main predictors of Coronary Heart Disease (CHD). Moreover, the relevant code to replicate the analysis will be included in the report while the complete script is available in a dedicated GitHub repository.
+This report will present the results from a statistical analysis whose primary goal is to find the main predictors of Coronary Heart Disease (CHD). Moreover, the relevant code to replicate the analysis will be included in the report while the complete script is available in a dedicated [GitHub repository](https://github.com/tricarico672/SM_HW1).
 
 # Data Cleaning and Preprocessing
 
