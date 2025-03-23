@@ -1,0 +1,3 @@
+"0","lr <- glm(CHD ~ .,"
+"0","          data = train_data,"
+"0","          family = binomial)"

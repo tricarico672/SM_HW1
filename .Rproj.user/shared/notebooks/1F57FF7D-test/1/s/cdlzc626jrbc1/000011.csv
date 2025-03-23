@@ -1,0 +1,2 @@
+"0","kable(sum_tab_cat, format = ""latex"", booktabs = TRUE, caption = ""A Beautiful Table"") %>%"
+"0","  kable_styling(latex_options = c(""striped"", ""hold_position"", ""scale_down""))"

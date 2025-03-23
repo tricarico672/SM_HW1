@@ -1,0 +1,105 @@
+---
+title: "test"
+format: pdf
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+```{r}
+library(pacman)
+p_load(tidyverse, ROCR, ggplot2, readr, ggthemes, gtsummary, kableExtra)
+gtsummary::theme_gtsummary_compact()
+gtsummary::theme_gtsummary_eda()
+```
+
+```{r, include=FALSE}
+
+df <- read_csv("CHD Data.csv")
+theme_set(theme_base())
+df <- na.omit(df)
+
+df <- df |>
+  mutate(sex = as.factor(sex),
+         education = as.factor(education),
+         smoker = factor(smoker, levels = c(0,1), labels = c('1', '2')),
+         stroke = as.factor(stroke),
+         diabetes = as.factor(diabetes),
+         HTN = as.factor(HTN),
+         CHD = as.factor(CHD))
+
+
+tbl_summary(df, by = CHD, include = c(smoker, stroke, HTN)) %>%
+  add_p()
+```
+
+```{r, fig.height=4, fig.width=4, include=FALSE}
+df <- df |>
+  mutate(sex = as.factor(sex),
+         education = as.factor(education),
+         smoker = factor(smoker, levels = c(1,2), labels = c('non-smoker', 'smoker')),
+         stroke = as.factor(stroke),
+         diabetes = as.factor(diabetes),
+         HTN = as.factor(HTN),
+         CHD = as.factor(CHD))
+
+
+tbl_summary(df, by = CHD, include = c(smoker, stroke, HTN)) %>%
+  add_p()
+```
+
+```{r}
+categ <- numer <- c()
+
+for (name in names(df)){
+  if (is.numeric(df[[name]])) {
+    numer <- append(numer, name)
+  } else {
+    categ <- append(categ, name)
+  }
+}
+
+c2 <- V <- p_vals <- c()
+
+for (col in categ) {
+  
+  ch2 <- chisq.test(df[[col]], df$CHD)
+  V2 <- sqrt((ch2$statistic/sum(ch2$observed))/ch2$parameter)
+  
+  c2 <- append(c2, ch2$statistic)
+  
+  p_vals <- append(p_vals, ch2$p.value)
+  
+  V <- append(V, V2)
+  
+}
+
+sum_tab_cat <- as.data.frame(rbind(c2, V, p_vals))
+names(sum_tab_cat) <- categ
+sum_tab_cat <- select(sum_tab_cat, -CHD)
+rownames(sum_tab_cat) <- c('Chi Squared', "Cramer's V", 'p-value')
+
+sum_tab_cat <- round(sum_tab_cat, 2)
+kable(sum_tab_cat, format = "latex", booktabs = TRUE, caption = "Ua Bell sta tabell") %>%
+  kable_styling(latex_options = c("striped", "hold_position", "scale_down"))
+```
+
+```{r}
+cat("\\begin{minipage}{0.5\\textwidth}")  # Start left-aligned table
+sum %>%
+  select(-highlight) %>%
+  kable(format = "latex", booktabs = TRUE, caption = "Summary Table for Logistic Regression Model") %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down")) %>%
+  row_spec(which(sum$highlight == 'yes'), background = "lightgray")
+cat("\\end{minipage}")  # Close left-aligned section
+
+cat("\\hfill")  # Adds space between table and text
+
+cat("\\begin{minipage}{0.45\\textwidth}")  # Start right-aligned text
+cat("This is some text that appears to the right of the table. You can write a description or any other information here.")
+cat("\\end{minipage}")  # Close right-aligned section
+```

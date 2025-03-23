@@ -1,0 +1,502 @@
+---
+title: 'Exercise Sheet 1'
+author: "Anthony Tricarico"
+date: "March 10, 2025"
+format:
+    pdf:
+        theme: cosmo
+        df-print: paged
+        toc: true
+        toc-location: left
+        number-sections: true
+knitr:
+    opts_chunk:
+        warning: false
+        message: false
+        tidy: true
+        tidy.opts:
+            width.cutoff: 60
+editor_options:
+  chunk_output_type: console
+---
+
+# Exercise 1
+
+First we import the required packages that will be used throughout.
+
+```{r}
+library(tidyverse)
+library(ISLR2)
+library(tidymodels)
+library(class)
+```
+
+## Train-test split
+
+To split the data using a train-test split we first import them and then filter to get all the rows that do not belong to the last year contained in the dataset. This ensures that the temporal structure of the data is not undermined (since we're talking about a time series here).
+
+```{r}
+df <- Smarket
+head(df)
+```
+
+```{r}
+max_year <- max(df$Year)
+
+train <- df[df$Year != max_year,]
+test <- df[df$Year == max_year,]
+```
+
+## Fit KNN classifier
+
+To use a KNN classifier we first need to scale the data.
+
+```{r}
+train_scaled <- train %>%
+  select(Lag1, Lag2) %>%
+  scale() %>%
+  as_tibble()
+
+test_scaled <- test %>%
+  select(Lag1, Lag2) %>%
+  scale() %>%
+  as_tibble()
+```
+
+We check that the scaling reduced the variables to have a mean of zero (or very close) and a variance of 1
+
+```{r}
+mean(train_scaled$Lag1)
+var(train_scaled$Lag1)
+```
+
+```{r, include=FALSE}
+knn_pred <- knn(train_scaled, test_scaled, cl = train$Direction, 5)
+```
+
+## Evaluate train and test errors + plot
+
+```{r}
+set.seed(11) #<1>
+
+test_accuracies <- train_accuracies <- x_axis <- c()
+
+for (k in seq(1,100)){
+  
+  pred_test <- knn(train_scaled, test_scaled, train$Direction, k)
+  pred_train <- knn(train_scaled, train_scaled, train$Direction, k)
+  
+  test_accuracy <- mean(pred_test == test$Direction)
+  train_accuracy <- mean(pred_train == train$Direction)
+  
+  test_accuracies <- append(test_accuracies, test_accuracy)
+  train_accuracies <- append(train_accuracies, train_accuracy)
+  x_axis <- append(x_axis, 1/k)
+  
+}
+```
+
+1.  needed whenever there are computations relying on randomness (like breaking a tie between a point being classifying as belong to one class as opposed to another, etc.)
+
+```{r}
+set.seed(11)
+
+test_errors <- train_errors <- x_axis <- c()
+
+for (k in seq(1,100)){
+  
+  pred_test <- knn(train_scaled, test_scaled, train$Direction, k)
+  pred_train <- knn(train_scaled, train_scaled, train$Direction, k)
+  
+  test_error <- mean(pred_test != test$Direction)
+  train_error <- mean(pred_train != train$Direction)
+  
+  test_errors <- append(test_errors, test_error)
+  train_errors <- append(train_errors, train_error)
+  x_axis <- append(x_axis, 1/k)
+  
+}
+```
+
+```{r}
+results_plot_accuracies <- tibble(
+  'test_accuracy' = test_accuracies,
+  'train_accuracy' = train_accuracies,
+  'x_axis' = x_axis
+)
+```
+
+```{r}
+results_plot_errors <- tibble(
+  'test_errors' = test_errors,
+  'train_errors' = train_errors,
+  'x_axis' = x_axis
+)
+```
+
+```{r}
+plot(x_axis, test_accuracies, type = 'l', col = 'blue', ylim = c(0,1), ylab = 'accuracies')
+lines(x_axis, train_accuracies, type = 'l', col = 'red')
+legend('bottomright', legend = c('test_accuracies', 'train_accuracies'), col = c('blue', 'red'))
+
+```
+
+Using ggplot2
+
+```{r}
+library(ggplot2)
+library(ggthemes)
+
+ggplot(results_plot_accuracies, aes(x = x_axis)) +
+  geom_line(aes(y = test_accuracy, color = 'test'), show.legend = T) +
+  geom_line(aes(y = train_accuracy, color = 'train'), show.legend = T) +
+  theme_clean()
+```
+
+```{r}
+ggplot(results_plot_errors, aes(x = x_axis)) +
+  geom_line(aes(y = test_errors, color = 'test')) +
+  geom_point(aes(y = test_errors, color = 'test')) +
+  geom_line(aes(y = train_errors, color = 'train')) +
+  geom_point(aes(y = train_errors, color = 'train')) +
+  #scale_x_continuous(breaks = c(.01,.02,.05,.1,.2,.5,1)) +
+  theme_clean()
+```
+
+# Exercise 2
+
+Load the required libraries
+
+```{r}
+library(titanic)
+library(tidymodels)
+```
+
+Explore data
+
+```{r}
+df_titanic_train <- titanic::titanic_train %>%
+  select(Pclass, Sex, Age, Survived) %>%
+  mutate(Sex = as.factor(Sex),
+         Survived = as.factor(Survived))
+summary(df_titanic_train)
+```
+
+Remove rows with missing values
+
+```{r}
+df_titanic_train_cleaned <- na.omit(df_titanic_train)
+summary(df_titanic_train_cleaned)
+```
+
+Further split the dataset
+
+```{r}
+set.seed(11)
+
+train_ind <- sample(nrow(df_titanic_train_cleaned), size = nrow(df_titanic_train_cleaned) / 2)
+
+train_titanic2 <- df_titanic_train_cleaned[train_ind,]
+test_titanic2 <- df_titanic_train_cleaned[-train_ind,]
+```
+
+Fit logistic regression model
+
+```{r}
+lr <- glm(Survived ~ Age, data = train_titanic2, family = 'binomial')
+```
+
+Also with the other approach using `tidymodels`
+
+```{r}
+lr_spec <- logistic_reg() %>% # define a generalized linear model for binary outcomes
+    set_engine("glm") %>% # declare which package will be used to fit the model
+    set_mode("classification") # set model's mode to classification
+
+lr_fit <- lr_spec %>%
+  fit(Survived ~ Age, data = train_titanic2)
+```
+
+Predict fate of passengers based on their age
+
+```{r}
+predicted_test <- predict(lr_fit, new_data = test_titanic2, type = 'class')
+
+tidy(lr_fit)
+```
+
+```{r}
+set.seed(11)
+
+new_ages <- sample(1:90, replace = T, size = 100)
+
+new_ages_tb <- tibble('Age' = new_ages)
+
+proba <- predict(lr_fit, new_data = new_ages_tb, type = 'prob')
+```
+
+```{r}
+plot_tib <- cbind(new_ages_tb, proba)
+
+ggplot(plot_tib, aes(x = Age, y = .pred_1)) +
+  geom_line()
+```
+
+## Revised model
+
+add new elements to the fit of the model (the specification remains the same)
+
+```{r}
+revised_model <- lr_spec %>%
+  fit(Survived ~ Age + Sex, data = train_titanic2)
+
+surv_predictions <- predict(revised_model, new_data = test_titanic2, type = 'prob')
+
+#mean(surv_predictions$.pred_class == test_titanic2$Survived)
+```
+
+further revise the model
+
+```{r}
+revised_model_int <- lr_spec %>%
+  fit(Survived ~ Age*Sex, data = train_titanic2)
+
+surv_predictions_int <- predict(revised_model_int, new_data = test_titanic2, type = 'prob')
+
+#mean(surv_predictions_int$.pred_class == test_titanic2$Survived)
+
+```
+
+```{r}
+plot_tib <- cbind(test_titanic2, surv_predictions_int, surv_predictions)
+
+names(plot_tib) <- c("Pclass","Sex","Age","Survived",".pred_0_int",".pred_1_int",".pred_0",".pred_1")
+
+ggplot(plot_tib, aes(x = Age, color = Sex)) +
+  geom_line(aes(y = .pred_1)) +
+  geom_line(aes(y = .pred_1_int), linetype = 2) +
+  labs(y = 'P(survival)') +
+  theme_clean()
+```
+
+The dashed lines in the graph represent the probabilities obtained from the model with the interaction term. From the plot we can say the following:
+
+1.  males have lower survival rates independent of age compared to females
+2.  the interaction between gender and age is mostly significant in the female group where the interaction term completely inverts the trend observed in the non-interaction model
+
+# Exercise 3
+
+```{r}
+df_wage <- ISLR2::Wage
+#head(df_wage)
+```
+
+## Polynomial regression
+
+```{r}
+lin_mod <- lm(wage ~ poly(age, 4), data = df_wage)
+summary(lin_mod)
+```
+
+```{r}
+set.seed(1)
+
+age_tbl <- tibble(
+  'age' = sample(1:90, size = 200, replace = T)
+)
+
+df_wage$predictions <- predict(lin_mod, newdata = df_wage, interval = 'confidence')
+
+#df_wage$predictions <- predictions[, 'fit']
+```
+
+```{r}
+n <- length(df_wage$age)
+plot(wage~age, data = df_wage)
+lines(predictions[, 'fit']~age, data = sort_by(df_wage, df_wage$age), 
+      col = 'red')
+lines(predictions[, "lwr"]~age, data = sort_by(df_wage, df_wage$age), 
+      col = "blue", lty = 2, lwd = 1.5) # Lower bound
+lines(predictions[, "upr"]~age, data = sort_by(df_wage, df_wage$age), 
+      col = "blue", lty = 2, lwd = 1.5) # Upper bound
+```
+
+## Train-test split
+
+```{r}
+set.seed(1)
+train <- sample(nrow(df_wage), size = .75*nrow(df_wage))
+
+train_df <- df_wage[train,]
+test_df <- df_wage[-train,]
+```
+
+```{r}
+degrees <- rmse <- c()
+
+for (k in seq(1, 15)){
+  model <- lm(wage~poly(age, k), data = train_df)
+  
+  preds <- predict(model, newdata = test_df)
+  
+  mse <- mean((test_df$wage-preds)^2)
+  
+  rmse <- append(rmse, sqrt(mse))
+  
+  degrees <- append(degrees, k)
+  
+}
+```
+
+```{r}
+plot(degrees, rmse, type = 'l', main = 'test set rmse')
+```
+
+```{r}
+degrees <- train_rmse <- c()
+
+for (k in seq(1, 15)){
+  model <- lm(wage~poly(age, k), data = train_df)
+  
+  preds <- predict(model, newdata = train_df)
+  
+  mse <- mean((train_df$wage-preds)^2)
+  
+  train_rmse <- append(train_rmse, sqrt(mse))
+  
+  degrees <- append(degrees, k)
+  
+}
+```
+
+```{r}
+plot(degrees, train_rmse, type = 'l', main = 'train set rmse')
+```
+
+::: callout-important
+Notice how the RMSE changes based on whether we compute it on the train or test set. When we compute the RMSE on the train set it decreases steadily as we are adding more and more predictors to the model.
+
+However, when we compute the test-set RMSE this does not decrease steadily and there are "bumps" which are indicative of the fact that some choice of *degrees* is better compared to other ones.
+:::
+
+# Exercise 4
+
+```{r}
+df <- ISLR2::Default
+```
+
+```{r}
+pairs(df)
+```
+
+```{r}
+plot(income~balance, df)
+```
+
+```{r}
+lr_spec <- logistic_reg() %>%
+  set_engine('glm')
+
+lr_student <- lr_spec %>%
+  fit(default~student, data = df)
+
+lr_complete <- lr_spec %>%
+  fit(default~student+balance+income, data = df)
+```
+
+## Summaries of models {#sec-summaries-of-models}
+
+now we examine the coefficients of the simpler model.
+
+```{r}
+tidy(lr_student)
+```
+
+We see that the p-value is very small and the coefficient is therefore significantly different from 0. The estimated $\hat\beta_{student}$ is positive, implying a positive relationship between being a student and defaulting on credit card debt.
+
+```{r}
+tidy(lr_complete)
+```
+
+Now, by adding all other variables in the dataset the estimated $\hat\beta_{student}$ now retains the statistical significance but becomes negatively related to the probability of defaulting on credit card debt. Balance seems to be impacting the probability of default much more being a more statistically significant coefficient.
+
+## Predictions
+
+```{r}
+ex_student <- tibble(
+  'balance' = 1500,
+  'income' = 40000,
+  'student' = factor('Yes', levels = levels(df$student)))
+
+predict(lr_complete, new_data = ex_student, type = 'prob')
+```
+
+```{r}
+ex_not <- tibble(
+  'balance' = 1500,
+  'income' = 40000,
+  'student' = factor('No', levels = levels(df$student)))
+
+predict(lr_complete, new_data = ex_not, type = 'prob')
+```
+
+We see that the probability of default does not increase by much thus corroborating the explanation given in @sec-summaries-of-models
+
+## Replicating plots
+
+```{r}
+library(ggthemes)
+theme_set(theme_few())
+```
+
+```{r}
+plot2 <- ggplot(df, aes(x = student, y = balance)) +
+  stat_boxplot(geom = 'errorbar') +
+  geom_boxplot(aes(fill = student)) +
+  labs(x = 'Student Status', y = 'Credit Card Balance') +
+  scale_y_continuous(breaks = seq(0,2500,500)) +
+  scale_fill_manual(values = c('lightblue', 'darkorange')) +
+  theme(legend.position = 'none',
+        axis.title.x = element_text(size = 12, face = 'bold'),
+        axis.title.y = element_text(size = 12, face = 'bold'))
+```
+
+```{r}
+probs <- predict(lr_complete, new_data = df, type = 'prob')
+
+probs <- cbind(probs, df$student, df$balance)
+
+names(probs) <- c('nodef', 'yesdef', 'student', 'balance')
+```
+
+```{r}
+default_rates <- probs %>%
+  group_by(student) %>%
+  summarize(default_rate = mean(yesdef/nodef))
+
+default_rate_student <- default_rates %>%
+  filter(student == 'Yes') %>%
+  pull(default_rate)
+
+default_rate_no_student <- default_rates %>%
+  filter(student == 'No') %>%
+  pull(default_rate)
+```
+
+```{r}
+plot1 <- ggplot(probs, aes(x = balance, y = yesdef, color = student)) +
+  geom_line() +
+  geom_hline(yintercept = default_rate_student, linetype = 'dashed', color = 'blue') +
+  geom_hline(yintercept = default_rate_no_student, linetype = 'dashed', color = 'red') +
+  scale_color_manual(values = c('lightblue', 'darkorange')) +
+  #scale_x_continuous(breaks = c(500, 1000, 1500, 2000), limits = c(480, 2300)) +
+  scale_y_continuous(breaks = c(0,.2,.4,.6,.8)) +
+  labs(x = 'Credit Card Balance', y = 'Default Rate') +
+  theme(legend.position = 'top')
+```
+
+```{r}
+library(gridExtra)
+
+grid.arrange(plot1, plot2, ncol = 2)
+```

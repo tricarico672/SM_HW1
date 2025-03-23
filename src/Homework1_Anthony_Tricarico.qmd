@@ -1,0 +1,349 @@
+---
+title: 'Homework 1'
+date: '2025-03-23'
+author: 'Anthony Tricarico (254957)'
+format:
+  pdf:
+    mainfont: 'Times New Roman'
+    latex_engine: xelatex
+    #toc: true
+    number-sections: true
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(warning=FALSE,
+message=FALSE,
+tidy.opts=list(width.cutoff = 90),
+tidy = TRUE,
+fig.align = 'center')
+```
+
+```{r, include = F}
+#Library import
+library(pacman)
+p_load(tidyverse, ROCR, ggplot2, readr, ggthemes, kableExtra, caret, tidymodels, class, proc)
+```
+
+```{r, include = F}
+setwd("~/Desktop/UniTrento/Courses/Second Semester/SM/HW/HW1")
+df <- read_csv("data/CHD_Data.csv")
+```
+
+# Introduction
+
+This report will present the results from a statistical analysis whose primary goal is to find the main predictors of Coronary Heart Disease (CHD). Moreover, the relevant code to replicate the analysis will be included in the report while the complete script is available in a dedicated GitHub repository.
+
+# Data Cleaning and Preprocessing
+
+It is fundamental to check the integrity of the dataset and show the count of missing values per variables.
+
+```{r, echo = FALSE}
+summary(df) %>%
+  kable(format = "latex", booktabs = TRUE, caption = "Summary of the Dataset") %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down", 'striped'))
+```
+
+The variables `education`, `smoker`, `cpd`, `chol`, `BMI`, and `HR` all contain at least one missing value. Rows containing a missing value in one of these columns will be dropped from the dataset.
+
+```{r}
+df <- na.omit(df)
+```
+
+It is also important to check the structure of the dataset to see if all the variables are cast to the correct type.
+
+```{r, include=FALSE}
+str(df)
+```
+
+Using the `str` function it is possible to see that most of the variables are not cast to their correct type. For instance, all categorical variables are not coded as factors but either as numeric or character values. This might cause problems later on, so we address this problem by casting each variable to its correct data type.
+
+```{r}
+df_cleaned <- df |>
+  mutate(sex = as.factor(sex),
+         education = factor(education, levels = c(1, 2, 3, 4), 
+                            labels = c('NoHS', 'HS', 'COL', 'P-COL')),
+         smoker = factor(smoker, levels = c(0,1), labels = c('No', 'Yes')),
+         stroke = factor(stroke, levels = c(0,1), labels = c('No', 'Yes')),
+         diabetes = factor(diabetes, levels = c(0,1), labels = c('No', 'Yes')),
+         HTN = factor(HTN, levels = c(0,1), labels = c('No', 'Yes')),
+         CHD = as.factor(CHD))
+```
+
+Now that the data has been cleaned, we are ready to proceed to data exploration.
+
+# Exploratory Data Analysis
+
+```{r, include = F}
+categ <- numer <- c()
+
+for (name in names(df_cleaned)){
+  if (is.numeric(df_cleaned[[name]])) {
+    numer <- append(numer, name)
+  } else {
+    categ <- append(categ, name)
+  }
+}
+```
+
+The name of categorical and numerical variables have been stored in two different vectors, namely `categ` and `numer`. This was done to conveniently plot data based on whether they were categorical or numerical.
+
+```{r, echo=FALSE, fig.width=6, fig.height=4}
+par(mfrow = c(2, 3), oma = c(0, 0, 2, 0))
+for (col in numer){
+  fmla <- as.formula(paste(col,'~CHD'))
+  boxplot(fmla, data = df_cleaned, main = col, ylab = col)
+}
+mtext("Continuous Variables (By CHD)", outer = TRUE, cex = 1.5, font = 2)
+```
+
+From the boxplots above we see that age might have a high discriminative power considering that the median age for those affected by CHD appears to be higher than that of of people not affected by it. The difference in medians of all other variables does not show any other significant difference between groups. However, it is noted that many outliers are present in most of the variables observed.
+
+Now we can move on to plotting the main features of the categorical variables. However, it is also useful to quantify the association between categorical variables by using appropriate statistical tests as shown in the table below. The table summarizes the results of a Pearson's Chi-Squared test of independence carried out between each categorical variable in the dataset and CHD. It also adds the Cramer's Index of Association to check which variables are strongly associated with CHD. The predictors that show a small degree of association with CHD are hypertension (HTN), diabetes, and sex.
+
+```{r, include = F}
+c2 <- V <- p_vals <- c()
+
+for (col in categ) {
+  
+  ch2 <- chisq.test(df_cleaned[[col]], df$CHD)
+  V2 <- sqrt((ch2$statistic/sum(ch2$observed))/ch2$parameter)
+  
+  c2 <- append(c2, ch2$statistic)
+  
+  p_vals <- append(p_vals, ch2$p.value)
+  
+  V <- append(V, V2)
+  
+}
+```
+
+```{r, echo=FALSE}
+sum_tab_cat <- as.data.frame(rbind(c2, V, p_vals))
+names(sum_tab_cat) <- categ
+sum_tab_cat <- select(sum_tab_cat, -CHD)
+rownames(sum_tab_cat) <- c('Chi-squared', "Cramer's V", 'p-value')
+sum_tab_cat <- round(sum_tab_cat, 2)
+
+kable(sum_tab_cat, format = "latex", booktabs = TRUE, caption = "Chi-Squared, Association Index, and p-value for Pearson's Test of Independence") %>%
+   kable_styling(latex_options = c("striped", "HOLD_position", "scale_down"))
+```
+
+It is also useful to check how data are distributed in the different classes to understand if some categories are underrepresented or might lead later on to issues with imbalanced classes.
+
+```{r, echo = F, fig.width=10, fig.height=5}
+
+par(mfrow = c(2,4), oma = c(0, 0, 2, 0))
+for (col in categ){
+  tb <- as.data.frame(table(df_cleaned[[col]]))
+  names(tb) <- c(col, 'frequency')
+  
+  fmla <- as.formula(paste('frequency~',col))
+  
+  barplot(fmla, data = tb)
+}
+mtext("Class Imbalance", outer = TRUE, cex = 1.5, font = 2)
+```
+
+In the barplots above it is possible to determine the drastic class imbalances that are present in the dataset. Even the target variable (CHD) suffers from this issue. This highlights the fact that some conditions in the sample used for the study are particularly rare (i.e., stroke, diabetes).
+
+# Statistical Analysis
+
+Now, before moving on to the model specification and fitting it is recommended to split the data into train and test sets to control for the issue of data leakage and to assess our model fairly on data it has never seen.
+
+## Train-Test Split
+
+Due to the problem of imbalanced classes illustrated in @sec-categorical-variables, the train-test split will be performed using `caret::createDataPartition()` to make sure the train and test samples are representative of the original one. The function `set.seed()` ensures that the result of the split are the same across different iterations.
+
+```{r}
+set.seed(11)
+train_idx <- caret::createDataPartition(df_cleaned$CHD, p=0.75)$Resample1
+
+train_data <- df_cleaned[train_idx, ]
+test_data <- df_cleaned[-train_idx, ]
+```
+
+## Fitting Logistic Regression Model {#sec-fitting-logistic-regression-model}
+
+Now that the data has been split, it is possible to fit the model on the training set.
+
+```{r}
+lr <- glm(CHD ~ .,
+          data = train_data,
+          family = binomial)
+```
+
+```{r, echo=FALSE}
+sum <- tidy(lr) %>%
+   mutate(
+    highlight = ifelse(p.value < 0.05, "yes", "no")  # Identify significant rows
+  ) 
+
+sum %>%
+  select(-highlight) %>%
+   kable(format = "latex", booktabs = TRUE, caption = "Summary Table for Logistic Regression Model") %>%
+   kable_styling(latex_options = c("HOLD_position", "scale_down"), font_size = 6) %>%
+  row_spec(which(sum$highlight == 'yes'), background = "lightgray")  # Highlight significant rows
+```
+
+The summary of the model shows that the main variables that have a significant effect on the log-odds of developing CHD are:
+
+-   Categorical variables (i.e., sex, HTN, diabetes): the coefficient represents the increase in the log-odds of developing CHD compared to the baseline group and keeping everything else constant.
+
+-   Numerical variables (i.e., age, cpd, DBP): the coefficient represents the increase in the log-odds of developing CHD when the predictor of interest increases by one unit and when everything else is kept fixed.
+
+Variables whose coefficient is not statistically significant lack interpretability since we cannot say they are statistically different from 0 at the population level (i.e., no main effect has been found).
+
+## Fitting K-NN Model
+
+In this section, different K-NN models are fitted using values of $k$ ranging from 1 to 20. The performance of those models is discussed then in @sec-model-performances.
+
+::: callout-important
+The numerical variables in the train and test subsets of the dataset have been rescaled using the `scale` function and have been used to train the different instances of K-NN models. The results have been assigned to the `train_scaled` and `test_scaled` variables, respectively.
+:::
+
+```{r, fig.height=8, include = F}
+pairs(df_cleaned, lower.panel = panel.smooth, upper.panel = NULL)
+```
+
+```{r, include = F}
+train_scaled <- train_data %>%
+  select(-categ) %>%
+  scale() %>%
+  as_tibble() %>%
+  cbind(train_data[, categ]) %>%
+  mutate(across(setdiff(categ, 'CHD'), as.numeric)) 
+#converts all categorical columns into numeric values apart from
+#the CHD variable
+
+test_scaled <- test_data %>%
+  select(-categ) %>%
+  scale() %>%
+  as_tibble() %>%
+  cbind(test_data[, categ]) %>%
+  mutate(across(setdiff(categ, 'CHD'), as.numeric))
+
+```
+
+```{r}
+X_train <- select(train_scaled, -CHD)
+X_test <- select(test_scaled, -CHD)
+y_train <- train_scaled$CHD
+y_test <- test_scaled$CHD
+```
+
+```{r, include=FALSE}
+set.seed(11)
+test_errors <- train_errors <-  ks <- c()
+for (k in 1:20) {
+  preds_test <- knn(X_train, X_test, y_train, k = k)
+  preds_train <- knn(X_train, X_train, y_train, k = k)
+  ks <- append(ks, 1/k)
+  test_err <- mean(preds_test != y_test)
+  test_errors <- append(test_errors, test_err)
+  train_err <- mean(preds_train != y_train)
+  train_errors <- append(train_errors, train_err) 
+  }
+```
+
+## Model performances {#sec-model-performances}
+
+Now we can evaluate the accuracy of each model by producing a ROC curve for the Logistic Regression and by looking at the error metrics for different $k$ parameters for the K-NN Classifier.
+
+### Confusion matrix {#sec-confusion-matrix}
+
+From the logistic regression model fitted above, we get the following predicted classes.
+
+```{r}
+predics <- predict(lr, newdata = test_data, type = 'response')
+classes <- ifelse(predics > .5, 'Yes', 'No')
+```
+
+```{r, echo=FALSE}
+table(test_data$CHD, classes) %>%
+  kable(format = "latex", booktabs = TRUE, caption = "Confusion Matrix for Logistic Regression") %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down"))
+```
+
+From the confusion matrix we can retrieve some metrics, including:
+
+```{r}
+precision <- 6/(6+7)
+recall <- 6/(6+145)
+```
+
+```{r, echo=FALSE}
+print(paste('precision is:', round(precision, 2)))
+print(paste('recall is:', round(recall, 2)))
+```
+
+These metrics suggest that the model is not good enough for this classification task and that more advanced techniques should be used if one wants to improve on the current predictive capabilities of the model.
+
+### ROC Curve and AUC
+
+The ROC curve can be used to show how well the Logistic Regression model fitted in @sec-fitting-logistic-regression-model performs on unseen (test) data.
+
+```{r, include = FALSE}
+lr_prob <- predict(lr, newdata = test_data, type = "response")
+```
+
+```{r, echo=FALSE, fig.height=3, fig.width=5}
+predob <- ROCR::prediction(lr_prob, test_data$CHD)
+
+perf <- ROCR::performance(predob, "tpr", "fpr")
+
+plot(perf, main = 'ROC Curve')
+abline(0, 1, col = "red", lty = 2)
+```
+
+The overall AUC for this model is obtained with the following function from the `pROC` package.
+
+```{r}
+# Compute ROC curve
+roc_obj <- pROC::roc(test_data$CHD, lr_prob)
+
+# Compute and print AUC
+auc_value <- pROC::auc(roc_obj)
+print(auc_value)
+```
+
+Given the AUC value, one might be tempted to claim that the model has a decent discriminative power, but when this result is viewed in light of the accuracy metrics presented in @sec-confusion-matrix it becomes clear that the model does not perform well at all.
+
+### Evaluating different $k$ for K-NN Classifier
+
+Illustrated below are the error rates of the model for different values of $k$.
+
+```{r, echo = F, fig.width=6, fig.height=4}
+
+plot(ks, train_errors, type = 'l', main = 'Train vs Test Performance',
+     ylab = 'Error Rate', xlab = '1/k', ylim = c(0, .3))
+
+lines(ks, test_errors, col = 'red', type = 'l')
+
+legend("topleft", legend = c("Train", "Test"), col = c("black", "red"), lty = 1, lwd = 2)
+```
+
+The best $k$ parameter for the model, among those explored in the analysis and as evaluated on the test set, seems to be 20.
+
+# Discussion and Limitations
+
+The current study might suffer from some limitations due to the class imbalances in the target value and in other categories as well.
+
+## K-NN vs Naive Classifier
+
+We can also compare the K-NN model to a simpler (Naive) model that always predicts the absence of CHD.
+
+```{r}
+naive_class <- rep('No', nrow(test_scaled))
+
+acc_knn <- mean(naive_class != test_scaled$CHD)
+```
+
+```{r, echo=FALSE}
+print(paste("The accuracy of the K-NN classifier is of", round(acc_knn, 2)))
+```
+
+We see that due to the imbalanced classes, even a model that learned nothing about the data is capable of producing an error rate of only 15%. This shows that the K-NN model is not good for this kind of problem. However, due to limitations in the page limit for this report, a strategy that was not explored was that of changing the distance metric used by the algorithm to find the top-$k$ closest observations to the target. Employing a distance metric different from the Euclidean one could produce different and, possibly, better results.
+
+## Is the Logistic Regression Model better?
+
+Put simply, the answer to this question is: not necessarily. The issue of imbalanced classes is a deep one and affects also the model fitted in @sec-fitting-logistic-regression-model. To improve on this preliminary result, it would be better to use a model that uses a different loss function. Specifically, a loss function that penalizes more the model for misclassifying the minority class compared to the majority class. By doing this, the model will have a greater chance of improving both its precision and recall as the number of true positives increases and the number of misclassification (both FP and FN) decreases.

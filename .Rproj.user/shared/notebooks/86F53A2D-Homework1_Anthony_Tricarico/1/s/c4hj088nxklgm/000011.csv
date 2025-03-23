@@ -1,0 +1,3 @@
+"0","table(test_data$CHD, classes) %>%"
+"0","  kable(format = ""latex"", booktabs = TRUE, caption = ""Confusion Matrix for Logistic Regression"") %>%"
+"0","  kable_styling(latex_options = c(""HOLD_position"", ""scale_down""))"

@@ -1,0 +1,8 @@
+"0","sum_tab_cat <- as.data.frame(rbind(c2, V, p_vals))"
+"0","names(sum_tab_cat) <- categ"
+"0","sum_tab_cat <- select(sum_tab_cat, -CHD)"
+"0","rownames(sum_tab_cat) <- c('Chi-squared', ""Cramer's V"", 'p-value')"
+"0","sum_tab_cat <- round(sum_tab_cat, 2)"
+"0",""
+"0","kable(sum_tab_cat, format = ""latex"", booktabs = TRUE, caption = ""Chi-Squared, Association Index, and p-value for Pearson's Test of Independence"") %>%"
+"0","   kable_styling(latex_options = c(""striped"", ""HOLD_position"", ""scale_down""))"

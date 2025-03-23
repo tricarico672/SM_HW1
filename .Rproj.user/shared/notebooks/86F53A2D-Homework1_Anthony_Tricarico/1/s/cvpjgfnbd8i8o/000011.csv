@@ -1,0 +1,5 @@
+"0","set.seed(11)"
+"0","train_idx <- caret::createDataPartition(df_cleaned$CHD, p=0.75)$Resample1"
+"0",""
+"0","train_data <- df_cleaned[train_idx, ]"
+"0","test_data <- df_cleaned[-train_idx, ]"

@@ -1,0 +1,1 @@
+"0","lr_prob <- predict(lr, newdata = test_data, type = ""response"")"
