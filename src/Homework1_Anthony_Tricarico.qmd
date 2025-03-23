@@ -10,7 +10,6 @@ format:
     latex_engine: xelatex
     #toc: true
     number-sections: true
-output-file: "../out/HW1_Anthony_Tricarico.pdf"
 ---
 
 ```{r setup, include = FALSE}
