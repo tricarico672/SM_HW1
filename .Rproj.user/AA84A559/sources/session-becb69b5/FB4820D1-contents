@@ -2,12 +2,15 @@
 title: 'Homework 1'
 date: '2025-03-23'
 author: 'Anthony Tricarico (254957)'
+project:
+  execute-dir: project
 format:
   pdf:
     mainfont: 'Times New Roman'
     latex_engine: xelatex
     #toc: true
     number-sections: true
+output-file: "../out/HW1_Anthony_Tricarico.pdf"
 ---
 
 ```{r setup, include = FALSE}
