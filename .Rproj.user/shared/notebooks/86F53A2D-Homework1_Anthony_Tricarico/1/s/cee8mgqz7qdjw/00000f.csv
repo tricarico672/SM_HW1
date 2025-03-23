@@ -1,6 +1,0 @@
-"0","#this section employs the scaled version of the dataset so that numerical variables have"
-"0","#a mean of 0 and unit variance"
-"0","X_train <- select(train_scaled, -CHD)"
-"0","X_test <- select(test_scaled, -CHD)"
-"0","y_train <- train_scaled$CHD"
-"0","y_test <- test_scaled$CHD"

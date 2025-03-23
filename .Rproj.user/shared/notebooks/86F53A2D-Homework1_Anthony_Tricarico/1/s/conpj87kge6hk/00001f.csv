@@ -1,5 +1,0 @@
-"0","predob <- ROCR::prediction(lr_prob, test_data$CHD)"
-"0",""
-"0","perf <- ROCR::performance(predob, ""tpr"", ""fpr"")"
-"0",""
-"0","plot(perf, main = 'ROC Curve')"

@@ -1,3 +1,0 @@
-"0","summary(df) %>%"
-"0","  kable(format = ""latex"", booktabs = TRUE, caption = ""Summary of the Dataset"") %>%"
-"0","  kable_styling(latex_options = c(""HOLD_position"", ""scale_down"", 'striped'))"

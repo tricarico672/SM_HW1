@@ -1,2 +1,0 @@
-"0","predics <- predict(lr, newdata = test_data, type = 'response')"
-"0","classes <- ifelse(predics > .5, 'Yes', 'No')"

@@ -1,5 +1,5 @@
 .Rhistory
 .RData
-*.Rproj
+*.Rproj*
 Homework 01.pdf
-.DS_Store
+*.DS_Store

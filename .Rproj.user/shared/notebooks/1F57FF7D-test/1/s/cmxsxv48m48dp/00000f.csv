@@ -1,6 +1,0 @@
-"0","library(pacman)"
-"0","p_load(tidyverse, ROCR, ggplot2, readr, ggthemes, gtsummary, kableExtra)"
-"0","gtsummary::theme_gtsummary_compact()"
-"2","[38;5;232mSetting theme [34m""Compact""[38;5;232m[39m"
-"0","gtsummary::theme_gtsummary_eda()"
-"2","[38;5;232mSetting theme [34m""Exploratory Data Analysis""[38;5;232m[39m"

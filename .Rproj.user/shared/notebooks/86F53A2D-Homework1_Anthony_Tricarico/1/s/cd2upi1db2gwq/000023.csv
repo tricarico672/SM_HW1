@@ -1,1 +1,0 @@
-"0","pairs(df_cleaned, lower.panel = panel.smooth, upper.panel = NULL)"

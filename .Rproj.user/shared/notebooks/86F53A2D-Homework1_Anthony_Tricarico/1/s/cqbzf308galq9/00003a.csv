@@ -1,5 +1,0 @@
-"0","par(mfrow = c(2, 3), oma = c(0, 0, 2, 0))"
-"0","for (col in numer){"
-"0","  fmla <- as.formula(paste(col,'~CHD'))"
-"0","  boxplot(fmla, data = df_cleaned, main = col, ylab = col)"
-"0","}"
