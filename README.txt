@@ -1,0 +1,1 @@
+This repository contains the source code (src) and the generated PDF output (out) for the First Homework of the Statistical Models class.
