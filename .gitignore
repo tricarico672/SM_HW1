@@ -3,3 +3,4 @@
 *.Rproj*
 Homework 01.pdf
 *.DS_Store
+.Rproj.user
