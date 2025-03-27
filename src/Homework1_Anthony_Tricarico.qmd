@@ -337,11 +337,11 @@ We can also compare the K-NN model to a simpler (Naive) model that always predic
 ```{r}
 naive_class <- rep('No', nrow(test_scaled))
 
-acc_naive <- mean(naive_class != test_scaled$CHD)
+err_naive <- mean(naive_class != test_scaled$CHD)
 ```
 
 ```{r, echo=FALSE}
-print(paste("The accuracy of the Naive classifier is of", round(acc_naive, 2)))
+print(paste("The error rate of the Naive classifier is of", round(err_naive, 2)))
 ```
 
 We see that due to the imbalanced classes, even a model that learned nothing about the data is capable of producing an error rate of only 15%. This shows that the K-NN model is not good for this kind of problem. However, due to limitations in the page limit for this report, a strategy that was not explored was that of changing the distance metric used by the algorithm to find the top-$k$ closest observations to the target. Employing a distance metric different from the Euclidean one could produce different and, possibly, better results.

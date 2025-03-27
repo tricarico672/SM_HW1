@@ -234,9 +234,9 @@ legend("topleft", legend = c("Train", "Test"), col = c("black", "red"), lty = 1,
 ## --------------------------------------------------------------------------------------------------------------------
 naive_class <- rep('No', nrow(test_scaled))
 
-acc_knn <- mean(naive_class != test_scaled$CHD)
+err_knn <- mean(naive_class != test_scaled$CHD)
 
 
 ## ----echo=FALSE------------------------------------------------------------------------------------------------------
-print(paste("The accuracy of the K-NN classifier is of", round(acc_knn, 2)))
+print(paste("The error rate of the K-NN classifier is of", round(err_knn, 2)))
 
