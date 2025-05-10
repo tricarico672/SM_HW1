@@ -11,7 +11,7 @@ Open a terminal or RStudio and run:
 
 ```sh
 git clone https://github.com/tricarico672/SM_HW1
-cd <your-repo>
+cd SM_HW1
 ```
 ### 2️⃣ Open R or RStudio and Install``` renv```
 If renv is not already installed, install it with:
